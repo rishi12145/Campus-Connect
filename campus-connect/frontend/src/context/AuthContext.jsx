@@ -155,16 +155,21 @@ export const AuthProvider = ({ children }) => {
       // If roll number or username given, resolve to email
       if (!cleaned.includes('@')) {
         try {
-          const { data: matchedProfile } = await supabase
-            .from('profiles')
-            .select('college_email')
-            .or(`roll_number.ilike.${cleaned},id.eq.${cleaned}`)
-            .maybeSingle();
+          const { data: resolvedEmail } = await supabase.rpc('get_email_by_roll', { p_identifier: cleaned });
+          if (resolvedEmail) {
+            targetEmail = resolvedEmail;
+          } else {
+            const { data: matchedProfile } = await supabase
+              .from('profiles')
+              .select('college_email')
+              .or(`roll_number.ilike.${cleaned},id.eq.${cleaned}`)
+              .maybeSingle();
 
-          if (matchedProfile && matchedProfile.college_email) {
-            targetEmail = matchedProfile.college_email;
-          } else if (cleaned.toLowerCase() === 'rishiadmin' || cleaned.toLowerCase() === 'admin') {
-            targetEmail = 'rishiadmin@diu.iiitvadodara.ac.in';
+            if (matchedProfile && matchedProfile.college_email) {
+              targetEmail = matchedProfile.college_email;
+            } else if (cleaned.toLowerCase() === 'rishiadmin' || cleaned.toLowerCase() === 'admin') {
+              targetEmail = 'rishiadmin@diu.iiitvadodara.ac.in';
+            }
           }
         } catch (e) {
           console.warn('[AuthContext] Roll lookup error:', e.message);
