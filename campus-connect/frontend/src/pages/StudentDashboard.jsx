@@ -37,7 +37,8 @@ import {
   Radio,
   Palmtree,
   PartyPopper,
-  AlertCircle
+  AlertCircle,
+  BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
@@ -89,25 +90,34 @@ export const StudentDashboard = () => {
     return 'Good evening';
   };
 
+  // Active Semester state defaulting to user's registered semester
+  const [activeSemester, setActiveSemester] = useState(user?.semester || 'Semester 4');
+
+  useEffect(() => {
+    if (user?.semester) {
+      setActiveSemester(user.semester);
+    }
+  }, [user?.semester]);
+
   // Load campus data
   const loadData = () => {
     const rawAnnouncements = storageService.getAnnouncements();
     const userBranch = user?.branch || 'CSE';
-    const userSem = user?.semester || 'Semester 4';
+    const effectiveSem = activeSemester || user?.semester || 'Semester 4';
 
     // Prioritize announcements matching student's branch and semester
     const branchAnnouncements = rawAnnouncements.filter(a => {
       const matchBranch = !a.targetBranch || a.targetBranch === 'All' || a.targetBranch === 'All Branches' || a.targetBranch === userBranch;
-      const matchSem = !a.targetSemester || a.targetSemester === 'All' || a.targetSemester === 'All Semesters' || a.targetSemester === userSem;
+      const matchSem = !a.targetSemester || a.targetSemester === 'All' || a.targetSemester === 'All Semesters' || a.targetSemester === effectiveSem;
       return matchBranch && matchSem;
     });
     setAnnouncements(branchAnnouncements.length > 0 ? branchAnnouncements : rawAnnouncements);
 
     const allRoutines = storageService.getRoutines();
     const semRoutines = allRoutines.filter(r => 
-      r.semester === userSem && (!r.branch || r.branch === 'All' || r.branch === 'Common' || r.branch === userBranch)
+      r.semester === effectiveSem && (!r.branch || r.branch === 'All' || r.branch === 'Common' || r.branch === userBranch)
     );
-    setRoutines(semRoutines.length > 0 ? semRoutines : allRoutines.filter(r => r.semester === userSem));
+    setRoutines(semRoutines.length > 0 ? semRoutines : allRoutines.filter(r => r.semester === effectiveSem));
     setResources(storageService.getResources());
     setDiscussions(storageService.getDiscussions());
     setLostFoundItems(storageService.getLostFound().filter(item => item.status === 'open'));
@@ -119,7 +129,7 @@ export const StudentDashboard = () => {
     const handleUpdate = () => loadData();
     window.addEventListener('campus_connect_update', handleUpdate);
     return () => window.removeEventListener('campus_connect_update', handleUpdate);
-  }, [user]);
+  }, [user, activeSemester]);
 
   // Trigger celebration confetti
   const triggerConfetti = () => {
@@ -284,7 +294,7 @@ export const StudentDashboard = () => {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-[#B7F34A]/20 text-[#B7F34A] border border-[#B7F34A]/40">
                 <span className="w-2 h-2 rounded-full bg-[#B7F34A] animate-ping" />
-                {user?.batch || 'B.Tech CSE'} • {user?.semester || 'Semester 4'}
+                {user?.batch || 'B.Tech CSE'} • {activeSemester}
               </span>
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-3 py-1 rounded-full bg-[#222222] text-[#CCCCCC] border border-[#333333]">
                 <MapPin className="w-3.5 h-3.5 text-[#FF9F43]" />
@@ -947,7 +957,7 @@ export const StudentDashboard = () => {
                     <h3 className="text-base font-bold text-white">
                       {selectedDay} Academic Schedule
                     </h3>
-                    <p className="text-xs text-[#888888]">{user?.semester || 'Semester 4'} • Verified rooms</p>
+                    <p className="text-xs text-[#888888]">{activeSemester} • Verified rooms</p>
                   </div>
                 </div>
                 <button
@@ -958,8 +968,35 @@ export const StudentDashboard = () => {
                 </button>
               </div>
 
+              {/* Semester Switcher Tabs inside Drawer */}
+              <div className="space-y-1.5 pb-3 border-b border-[#262626]">
+                <div className="flex items-center justify-between text-[11px] font-bold text-[#888888]">
+                  <span className="flex items-center gap-1.5 text-white">
+                    <BookOpen className="w-3.5 h-3.5 text-[#B7F34A]" />
+                    <span>Select Semester Timetable:</span>
+                  </span>
+                  <span className="text-[10px] text-[#B7F34A] font-extrabold">{activeSemester}</span>
+                </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  {['Semester 1', 'Semester 2', 'Semester 3', 'Semester 4', 'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8'].map((sem) => (
+                    <button
+                      key={sem}
+                      onClick={() => setActiveSemester(sem)}
+                      className={`text-[10px] px-2.5 py-1 rounded-lg font-bold shrink-0 transition-all ${
+                        activeSemester === sem
+                          ? 'bg-[#B7F34A] text-[#0A0A0A] shadow-md shadow-[#B7F34A]/20'
+                          : 'bg-[#222222] text-[#888888] hover:text-white'
+                      }`}
+                    >
+                      {sem.replace('Semester ', 'Sem ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Day filter pills inside drawer */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider shrink-0 mr-1">Day:</span>
                 {daysList.map((d) => (
                   <button
                     key={d}

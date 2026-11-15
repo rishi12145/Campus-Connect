@@ -37,6 +37,65 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
+  // Helper to assemble normalized user object preserving registration semester
+  const buildAppUser = (authUser, profile, overrideData = {}) => {
+    if (!authUser && !profile) return null;
+    const meta = authUser?.user_metadata || {};
+
+    const effectiveSemester = overrideData.semester || meta.semester || profile?.semester || 'Semester 4';
+    const effectiveBranch = overrideData.branch || meta.branch || profile?.branch || 'CSE';
+    const effectiveStream = overrideData.stream || meta.stream || profile?.stream || 'B.Tech';
+    const effectiveBatchYear = overrideData.batchYear || meta.batch_year || profile?.batch_year || profile?.batchYear || '2023';
+    const effectiveBatch = overrideData.batch || meta.batch || profile?.batch || `${effectiveStream} ${effectiveBranch} ${effectiveBatchYear}`;
+    const effectiveFullName = overrideData.fullName || profile?.full_name || profile?.fullName || meta.full_name || authUser?.email?.split('@')[0] || 'Student';
+    const effectiveRoll = overrideData.rollNumber || profile?.roll_number || profile?.rollNumber || meta.roll_number || '';
+    const effectiveEmail = overrideData.collegeEmail || profile?.college_email || authUser?.email || '';
+
+    // If Supabase profile has outdated semester or missing link, sync in background
+    if (profile?.id && isSupabaseConfigured() && supabase) {
+      if (profile.semester !== effectiveSemester || (authUser?.id && !profile.user_id)) {
+        supabase
+          .from('profiles')
+          .update({
+            semester: effectiveSemester,
+            branch: effectiveBranch,
+            stream: effectiveStream,
+            batch: effectiveBatch,
+            batch_year: effectiveBatchYear,
+            ...(authUser?.id && !profile.user_id ? { user_id: authUser.id } : {})
+          })
+          .eq('id', profile.id)
+          .catch(() => {});
+      }
+    }
+
+    return {
+      ...(profile || {}),
+      id: profile?.id || authUser?.id || `usr-${Date.now()}`,
+      user_id: authUser?.id || profile?.user_id,
+      email: effectiveEmail,
+      collegeEmail: effectiveEmail,
+      fullName: effectiveFullName,
+      rollNumber: effectiveRoll,
+      semester: effectiveSemester,
+      branch: effectiveBranch,
+      stream: effectiveStream,
+      batchYear: effectiveBatchYear,
+      batch: effectiveBatch,
+      role: profile?.role || meta.role || 'student',
+      status: profile?.status || 'active',
+      phoneNumber: overrideData.phoneNumber || profile?.phone_number || meta.phone_number || '',
+      avatarUrl: profile?.avatar_url || profile?.avatarUrl || meta.avatar_url || '',
+      bio: profile?.bio || meta.bio || 'IIITV-ICD Student',
+      notificationPrefs: profile?.notification_prefs || profile?.notificationPrefs || meta.notification_prefs || {
+        email: true,
+        announcements: true,
+        community: true,
+        lostFound: true
+      }
+    };
+  };
+
   useEffect(() => {
     if (typeof storageService?.init === 'function') {
       storageService.init();
@@ -56,26 +115,7 @@ export const AuthProvider = ({ children }) => {
           if (initialSession?.user) {
             setSession(initialSession);
             const profile = await fetchSupabaseProfile(initialSession.user.id, initialSession.user.email);
-            const meta = initialSession.user.user_metadata || {};
-            const mergedUser = profile ? {
-              ...profile,
-              id: profile.id || initialSession.user.id,
-              user_id: initialSession.user.id,
-              email: initialSession.user.email,
-              fullName: profile.full_name || profile.fullName || meta.full_name,
-              role: profile.role || meta.role || 'student',
-              rollNumber: profile.roll_number || profile.rollNumber || meta.roll_number,
-              collegeEmail: profile.college_email || initialSession.user.email
-            } : {
-              id: initialSession.user.id,
-              user_id: initialSession.user.id,
-              email: initialSession.user.email,
-              collegeEmail: initialSession.user.email,
-              fullName: meta.full_name || initialSession.user.email.split('@')[0],
-              rollNumber: meta.roll_number || '',
-              role: meta.role || 'student',
-              status: 'active'
-            };
+            const mergedUser = buildAppUser(initialSession.user, profile);
             setUser(mergedUser);
             if (typeof storageService?.setCurrentUser === 'function') {
               storageService.setCurrentUser(mergedUser);
@@ -95,26 +135,7 @@ export const AuthProvider = ({ children }) => {
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
               if (currentSession?.user) {
                 const profile = await fetchSupabaseProfile(currentSession.user.id, currentSession.user.email);
-                const meta = currentSession.user.user_metadata || {};
-                const mergedUser = profile ? {
-                  ...profile,
-                  id: profile.id || currentSession.user.id,
-                  user_id: currentSession.user.id,
-                  email: currentSession.user.email,
-                  fullName: profile.full_name || profile.fullName || meta.full_name,
-                  role: profile.role || meta.role || 'student',
-                  rollNumber: profile.roll_number || profile.rollNumber || meta.roll_number,
-                  collegeEmail: profile.college_email || currentSession.user.email
-                } : {
-                  id: currentSession.user.id,
-                  user_id: currentSession.user.id,
-                  email: currentSession.user.email,
-                  collegeEmail: currentSession.user.email,
-                  fullName: meta.full_name || currentSession.user.email.split('@')[0],
-                  rollNumber: meta.roll_number || '',
-                  role: meta.role || 'student',
-                  status: 'active'
-                };
+                const mergedUser = buildAppUser(currentSession.user, profile);
                 setUser(mergedUser);
                 if (typeof storageService?.setCurrentUser === 'function') {
                   storageService.setCurrentUser(mergedUser);
@@ -314,26 +335,7 @@ export const AuthProvider = ({ children }) => {
       setSession(data.session);
 
       const profile = await fetchSupabaseProfile(data.user.id, data.user.email);
-      const meta = data.user.user_metadata || {};
-      const appUser = profile ? {
-        ...profile,
-        id: profile.id || data.user.id,
-        user_id: data.user.id,
-        email: data.user.email,
-        fullName: profile.full_name || profile.fullName || meta.full_name,
-        role: profile.role || meta.role || 'student',
-        rollNumber: profile.roll_number || profile.rollNumber || meta.roll_number,
-        collegeEmail: profile.college_email || data.user.email
-      } : {
-        id: data.user.id,
-        user_id: data.user.id,
-        email: data.user.email,
-        collegeEmail: data.user.email,
-        fullName: meta.full_name || data.user.email.split('@')[0],
-        rollNumber: meta.roll_number || '',
-        role: meta.role || 'student',
-        status: 'active'
-      };
+      const appUser = buildAppUser(data.user, profile);
 
       setUser(appUser);
       if (typeof storageService?.setCurrentUser === 'function') {
@@ -391,25 +393,7 @@ export const AuthProvider = ({ children }) => {
       let appUser = null;
       if (data.user) {
         const profile = await fetchSupabaseProfile(data.user.id, email);
-        appUser = profile ? {
-          ...profile,
-          id: profile.id || data.user.id,
-          user_id: data.user.id,
-          email,
-          fullName: profile.full_name || userData.fullName,
-          role: profile.role || 'student',
-          rollNumber: profile.roll_number || userData.rollNumber,
-          collegeEmail: email
-        } : {
-          id: data.user.id,
-          user_id: data.user.id,
-          email,
-          collegeEmail: email,
-          fullName: userData.fullName,
-          rollNumber: userData.rollNumber,
-          role: 'student',
-          status: 'active'
-        };
+        appUser = buildAppUser(data.user, profile, userData);
 
         if (data.session) {
           setSession(data.session);
@@ -420,8 +404,13 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
+      // Also register or update local storage with matching student details
+      try {
+        storageService.register(userData);
+      } catch (e) {}
+
       return {
-        user: appUser || { email, fullName: userData.fullName, role: 'student' },
+        user: appUser || { email, fullName: userData.fullName, role: 'student', semester: userData.semester || 'Semester 4' },
         session: data.session,
         requiresConfirmation
       };
@@ -488,12 +477,26 @@ export const AuthProvider = ({ children }) => {
         if (cleanUpdates.avatarUrl !== undefined) dbUpdates.avatar_url = cleanUpdates.avatarUrl;
         if (cleanUpdates.notificationPrefs) dbUpdates.notification_prefs = cleanUpdates.notificationPrefs;
         if (cleanUpdates.semester) dbUpdates.semester = cleanUpdates.semester;
+        if (cleanUpdates.branch) dbUpdates.branch = cleanUpdates.branch;
+        if (cleanUpdates.stream) dbUpdates.stream = cleanUpdates.stream;
+        if (cleanUpdates.batch) dbUpdates.batch = cleanUpdates.batch;
 
         const targetId = user.user_id || user.id;
         await supabase
           .from('profiles')
           .update(dbUpdates)
           .or(`user_id.eq.${targetId},id.eq.${targetId}`);
+
+        // Also update auth.users user_metadata
+        if (supabase.auth?.updateUser) {
+          await supabase.auth.updateUser({
+            data: {
+              ...(cleanUpdates.semester ? { semester: cleanUpdates.semester } : {}),
+              ...(cleanUpdates.branch ? { branch: cleanUpdates.branch } : {}),
+              ...(cleanUpdates.fullName ? { full_name: cleanUpdates.fullName } : {})
+            }
+          }).catch(() => {});
+        }
       } catch (err) {
         console.warn('[AuthContext] Profile update in Supabase warning:', err.message);
       }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import {
@@ -24,6 +24,18 @@ export const ProfilePage = () => {
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
   const [bio, setBio] = useState(user?.bio || '');
+  const [semester, setSemester] = useState(user?.semester || 'Semester 4');
+  const [branch, setBranch] = useState(user?.branch || 'CSE');
+
+  useEffect(() => {
+    if (user) {
+      if (user.fullName) setFullName(user.fullName);
+      if (user.phoneNumber) setPhoneNumber(user.phoneNumber);
+      if (user.bio) setBio(user.bio);
+      if (user.semester) setSemester(user.semester);
+      if (user.branch) setBranch(user.branch);
+    }
+  }, [user]);
 
   // Password Change State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -57,6 +69,8 @@ export const ProfilePage = () => {
         fullName,
         phoneNumber,
         bio,
+        semester,
+        branch,
         notificationPrefs: prefs
       });
       showToast('Profile details updated successfully!', 'success');
@@ -174,6 +188,38 @@ export const ProfilePage = () => {
                   className="w-full px-3.5 py-2.5 bg-[#1F1F1F] border border-[#2E2E2E] rounded-xl text-xs sm:text-sm text-white outline-none focus:border-[#B7F34A]"
                   required
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-white uppercase tracking-wider mb-1.5">
+                  Academic Semester
+                </label>
+                <select
+                  value={semester}
+                  onChange={(e) => setSemester(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#1F1F1F] border border-[#2E2E2E] rounded-xl text-xs sm:text-sm text-white outline-none focus:border-[#B7F34A]"
+                >
+                  {['Semester 1', 'Semester 2', 'Semester 3', 'Semester 4', 'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8'].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-white uppercase tracking-wider mb-1.5">
+                  Branch / Stream
+                </label>
+                <select
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#1F1F1F] border border-[#2E2E2E] rounded-xl text-xs sm:text-sm text-white outline-none focus:border-[#B7F34A]"
+                >
+                  {['CSE', 'AI', 'Cyber Security', 'ECE'].map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
               </div>
             </div>
 

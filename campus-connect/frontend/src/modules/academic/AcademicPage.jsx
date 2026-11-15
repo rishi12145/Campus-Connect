@@ -31,6 +31,12 @@ export const AcademicPage = () => {
   const [selectedSemester, setSelectedSemester] = useState(user?.semester || 'Semester 4');
   const [selectedBranch, setSelectedBranch] = useState(user?.branch || 'All');
 
+  useEffect(() => {
+    if (user?.semester) {
+      setSelectedSemester(user.semester);
+    }
+  }, [user?.semester]);
+
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const branchesList = ['All', 'CSE', 'AI', 'Cyber Security', 'ECE'];
 

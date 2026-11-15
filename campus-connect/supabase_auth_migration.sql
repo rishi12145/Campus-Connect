@@ -148,9 +148,14 @@ BEGIN
     LIMIT 1;
 
     IF v_existing_profile_id IS NOT NULL THEN
-        -- Link existing profile to the new Supabase Auth user ID (preserves all existing data)
+        -- Link existing profile to the new Supabase Auth user ID (preserves all existing data while applying registration semester)
         UPDATE public.profiles
         SET user_id = NEW.id,
+            semester = COALESCE(NEW.raw_user_meta_data->>'semester', semester),
+            branch = COALESCE(NEW.raw_user_meta_data->>'branch', branch),
+            stream = COALESCE(NEW.raw_user_meta_data->>'stream', stream),
+            batch = COALESCE(NEW.raw_user_meta_data->>'batch', batch),
+            batch_year = COALESCE(NEW.raw_user_meta_data->>'batch_year', batch_year),
             updated_at = NOW()
         WHERE id = v_existing_profile_id;
 
