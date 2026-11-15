@@ -330,7 +330,8 @@ export const ResourcesPage = () => {
       item.uploader_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.uploaderName?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const isMine = (item.uploaded_by || item.uploadedBy) === user?.id;
+    const uploader = item.uploaded_by || item.uploadedBy;
+    const isMine = uploader === user?.id || (user?.user_id && uploader === user.user_id);
     const matchesMyUploads = !filterMyUploads || isMine;
 
     return matchesSemester && matchesCategory && matchesYear && matchesSubject && matchesSearch && matchesMyUploads;
@@ -501,7 +502,8 @@ export const ResourcesPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredResources.map((item) => {
-              const isMine = (item.uploaded_by || item.uploadedBy) === user?.id;
+              const uploader = item.uploaded_by || item.uploadedBy;
+              const isMine = uploader === user?.id || (user?.user_id && uploader === user.user_id);
               const canModify = academicResourceService.canModify(item, user);
 
               return (

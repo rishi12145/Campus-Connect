@@ -14,6 +14,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- =========================================================================
 CREATE TABLE IF NOT EXISTS public.profiles (
     id TEXT PRIMARY KEY,
+    user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
     full_name TEXT NOT NULL,
     roll_number TEXT,
     college_email TEXT UNIQUE NOT NULL,
@@ -27,7 +28,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     status TEXT DEFAULT 'active',
     avatar_url TEXT DEFAULT '',
     bio TEXT DEFAULT '',
-    custom_password TEXT DEFAULT '',
     notification_prefs JSONB DEFAULT '{"email": true, "announcements": true, "community": true, "lostFound": true}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -702,7 +702,7 @@ ON CONFLICT (id) DO UPDATE SET
     type = EXCLUDED.type,
     coverage = EXCLUDED.coverage;
 
--- Seed About Us & Website Controller Content
+
 INSERT INTO public.about_content (id, controller, hero, vision, scope, showcase_images, benefits)
 VALUES (
     'about-main-content',

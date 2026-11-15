@@ -277,7 +277,7 @@ export const academicResourceService = {
           file_type: fileToUpload.type || 'application/pdf',
           file_size: formatBytes(fileToUpload.size),
           file_bytes: fileToUpload.size,
-          uploaded_by: user.id, // Authenticated user ID (never trusted from body)
+          uploaded_by: user.user_id || user.id, // Authenticated user ID (never trusted from body)
           uploader_name: user.fullName,
           uploader_role: user.role || 'student',
           download_count: 0
@@ -482,7 +482,11 @@ export const academicResourceService = {
     if (!user || !resource) return false;
     if (user.role === 'admin') return true;
     const uploaderId = resource.uploaded_by || resource.uploadedBy;
-    return Boolean(uploaderId && user.id && String(uploaderId) === String(user.id));
+    const currentUserId = user.user_id || user.id;
+    return Boolean(
+      uploaderId && 
+      (String(uploaderId) === String(currentUserId) || (user.id && String(uploaderId) === String(user.id)))
+    );
   }
 };
 

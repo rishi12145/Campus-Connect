@@ -136,6 +136,9 @@ export const LoginPage = () => {
               />
               <span className="text-[#AAAAAA]">Remember me</span>
             </label>
+            <Link to="/forgot-password" className="text-xs text-[#B7F34A] hover:underline font-semibold">
+              Forgot password?
+            </Link>
           </div>
 
           <button

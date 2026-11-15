@@ -21,6 +21,7 @@ export const RegisterPage = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   const { register } = useAuth();
@@ -89,8 +90,12 @@ export const RegisterPage = () => {
         branch: formData.branch
       };
       const res = await register(payload);
-      showToast(`Welcome to Campus Connect, ${res.user.fullName}!`, 'success');
-      navigate('/dashboard');
+      if (res?.requiresConfirmation) {
+        setSuccessMessage(`Registration successful! A verification email has been sent to ${formData.collegeEmail}. Please check your inbox and verify your email, then proceed to sign in.`);
+      } else {
+        showToast(`Welcome to Campus Connect, ${res?.user?.fullName || 'Student'}!`, 'success');
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Registration failed. Please check your details.');
     } finally {
@@ -125,6 +130,26 @@ export const RegisterPage = () => {
           </div>
         )}
 
+        {successMessage ? (
+          <div className="p-6 rounded-2xl bg-[#1A1A1A] border border-[#B7F34A]/40 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#B7F34A]/20 border border-[#B7F34A]/40 flex items-center justify-center text-[#B7F34A] mx-auto">
+              <ShieldCheck className="w-6 h-6 text-[#B7F34A]" />
+            </div>
+            <h3 className="text-lg font-black text-white">Check Your Inbox</h3>
+            <p className="text-xs text-[#AAAAAA] leading-relaxed max-w-md mx-auto">
+              {successMessage}
+            </p>
+            <div className="pt-2">
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl btn-lime text-xs uppercase tracking-wider font-extrabold shadow-lg shadow-[#B7F34A]/20"
+              >
+                <span>Proceed to Sign In</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -326,6 +351,7 @@ export const RegisterPage = () => {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
+        )}
 
         <div className="text-center pt-2 border-t border-[#262626]">
           <p className="text-xs text-[#888888]">
