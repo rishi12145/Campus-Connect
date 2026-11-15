@@ -297,9 +297,24 @@ export const storageService = {
     return getFromStorage(STORAGE_KEYS.CURRENT_USER, null);
   },
 
+  setCurrentUser(user) {
+    if (user) {
+      saveToStorage(STORAGE_KEYS.CURRENT_USER, user);
+      if (user.id || user.user_id) {
+        const token = `jwt-token-${user.id || user.user_id}-${Date.now()}`;
+        saveToStorage(STORAGE_KEYS.AUTH_TOKEN, token);
+      }
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      notifyChange(STORAGE_KEYS.CURRENT_USER, null);
+    }
+  },
+
   logout() {
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    notifyChange(STORAGE_KEYS.CURRENT_USER, null);
     notifyChange('cc_auth_logout', null);
   },
 

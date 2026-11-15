@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
@@ -13,12 +13,18 @@ export const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login } = useAuth();
+  const { login, isAuthenticated, isAdmin } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname || (isAdmin ? '/admin' : '/dashboard');
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, isAdmin, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,8 +42,9 @@ export const LoginPage = () => {
     try {
       setLoading(true);
       const res = await login(identifier.trim(), password);
-      showToast(`Welcome back, ${res.user.fullName}!`, 'success');
-      if (res.user.role === 'admin') {
+      const userName = res?.user?.fullName || res?.user?.full_name || 'User';
+      showToast(`Welcome back, ${userName}!`, 'success');
+      if (res?.user?.role === 'admin') {
         navigate('/admin');
       } else {
         navigate(from === '/login' || from === '/register' ? '/dashboard' : from);

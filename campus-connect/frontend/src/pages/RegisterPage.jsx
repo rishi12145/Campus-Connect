@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
@@ -24,9 +24,15 @@ export const RegisterPage = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { register } = useAuth();
+  const { register, isAuthenticated, isAdmin } = useAuth();
   const { showToast } = useNotification();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, isAdmin, navigate]);
 
   const streams = ['B.Tech', 'M.Tech', 'MCA', 'PhD'];
   const branches = [

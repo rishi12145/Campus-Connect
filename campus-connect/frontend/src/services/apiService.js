@@ -1,6 +1,6 @@
-import { storageService } from './storageService';
+import { storageService } from './storageService.js';
 
-const BACKEND_API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+const BACKEND_API_URL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_BACKEND_URL) || 'http://localhost:5000/api';
 
 /**
  * Reusable Unified API Service Layer
@@ -23,6 +23,10 @@ export const api = {
 
   async getCurrentUser() {
     return storageService.getCurrentUser();
+  },
+
+  setCurrentUser(user) {
+    return storageService.setCurrentUser(user);
   },
 
   async logout() {

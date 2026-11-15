@@ -28,10 +28,6 @@ export const AuthProvider = ({ children }) => {
           .ilike('college_email', email)
           .maybeSingle();
         if (data && !error) {
-          if (authUserId && !data.user_id) {
-            await supabase.from('profiles').update({ user_id: authUserId }).eq('id', data.id);
-            data.user_id = authUserId;
-          }
           return data;
         }
       }
@@ -42,7 +38,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    storageService.init();
+    if (typeof storageService?.init === 'function') {
+      storageService.init();
+    }
 
     let authSubscription = null;
 
@@ -50,41 +48,45 @@ export const AuthProvider = ({ children }) => {
       try {
         if (isSupabaseConfigured() && supabase) {
           // 1. Get initial session from Supabase
-          const { data: { session: initialSession } } = await supabase.auth.getSession();
+          const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) {
+            console.warn('[AuthContext] Initial session fetch notice:', sessionError.message);
+          }
+
           if (initialSession?.user) {
             setSession(initialSession);
             const profile = await fetchSupabaseProfile(initialSession.user.id, initialSession.user.email);
-            if (profile) {
-              const mergedUser = {
-                ...profile,
-                id: profile.id || initialSession.user.id,
-                user_id: initialSession.user.id,
-                email: initialSession.user.email,
-                fullName: profile.full_name || profile.fullName,
-                role: profile.role || 'student',
-                rollNumber: profile.roll_number || profile.rollNumber,
-                collegeEmail: profile.college_email || initialSession.user.email
-              };
-              setUser(mergedUser);
+            const meta = initialSession.user.user_metadata || {};
+            const mergedUser = profile ? {
+              ...profile,
+              id: profile.id || initialSession.user.id,
+              user_id: initialSession.user.id,
+              email: initialSession.user.email,
+              fullName: profile.full_name || profile.fullName || meta.full_name,
+              role: profile.role || meta.role || 'student',
+              rollNumber: profile.roll_number || profile.rollNumber || meta.roll_number,
+              collegeEmail: profile.college_email || initialSession.user.email
+            } : {
+              id: initialSession.user.id,
+              user_id: initialSession.user.id,
+              email: initialSession.user.email,
+              collegeEmail: initialSession.user.email,
+              fullName: meta.full_name || initialSession.user.email.split('@')[0],
+              rollNumber: meta.roll_number || '',
+              role: meta.role || 'student',
+              status: 'active'
+            };
+            setUser(mergedUser);
+            if (typeof storageService?.setCurrentUser === 'function') {
               storageService.setCurrentUser(mergedUser);
-            } else {
-              const meta = initialSession.user.user_metadata || {};
-              const fallbackUser = {
-                id: initialSession.user.id,
-                user_id: initialSession.user.id,
-                email: initialSession.user.email,
-                collegeEmail: initialSession.user.email,
-                fullName: meta.full_name || initialSession.user.email.split('@')[0],
-                rollNumber: meta.roll_number || '',
-                role: 'student',
-                status: 'active'
-              };
-              setUser(fallbackUser);
-              storageService.setCurrentUser(fallbackUser);
             }
           } else {
-            const localUser = storageService.getCurrentUser();
-            if (localUser) setUser(localUser);
+            // No active Supabase session
+            setUser(null);
+            setSession(null);
+            if (typeof storageService?.setCurrentUser === 'function') {
+              storageService.setCurrentUser(null);
+            }
           }
 
           // 2. Listen to Supabase Auth State Changes
@@ -93,36 +95,52 @@ export const AuthProvider = ({ children }) => {
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
               if (currentSession?.user) {
                 const profile = await fetchSupabaseProfile(currentSession.user.id, currentSession.user.email);
-                if (profile) {
-                  const mergedUser = {
-                    ...profile,
-                    id: profile.id || currentSession.user.id,
-                    user_id: currentSession.user.id,
-                    email: currentSession.user.email,
-                    fullName: profile.full_name || profile.fullName,
-                    role: profile.role || 'student',
-                    rollNumber: profile.roll_number || profile.rollNumber,
-                    collegeEmail: profile.college_email || currentSession.user.email
-                  };
-                  setUser(mergedUser);
+                const meta = currentSession.user.user_metadata || {};
+                const mergedUser = profile ? {
+                  ...profile,
+                  id: profile.id || currentSession.user.id,
+                  user_id: currentSession.user.id,
+                  email: currentSession.user.email,
+                  fullName: profile.full_name || profile.fullName || meta.full_name,
+                  role: profile.role || meta.role || 'student',
+                  rollNumber: profile.roll_number || profile.rollNumber || meta.roll_number,
+                  collegeEmail: profile.college_email || currentSession.user.email
+                } : {
+                  id: currentSession.user.id,
+                  user_id: currentSession.user.id,
+                  email: currentSession.user.email,
+                  collegeEmail: currentSession.user.email,
+                  fullName: meta.full_name || currentSession.user.email.split('@')[0],
+                  rollNumber: meta.roll_number || '',
+                  role: meta.role || 'student',
+                  status: 'active'
+                };
+                setUser(mergedUser);
+                if (typeof storageService?.setCurrentUser === 'function') {
                   storageService.setCurrentUser(mergedUser);
                 }
               }
             } else if (event === 'SIGNED_OUT') {
               setUser(null);
-              storageService.setCurrentUser(null);
+              setSession(null);
+              if (typeof storageService?.setCurrentUser === 'function') {
+                storageService.setCurrentUser(null);
+              }
             }
           });
 
           authSubscription = subscription;
         } else {
-          const localUser = storageService.getCurrentUser();
+          // Supabase is not configured (offline / standalone mock mode)
+          const localUser = storageService?.getCurrentUser ? storageService.getCurrentUser() : null;
           if (localUser) setUser(localUser);
         }
       } catch (err) {
         console.warn('[AuthContext] Auth initialization notice:', err.message);
-        const localUser = storageService.getCurrentUser();
-        if (localUser) setUser(localUser);
+        if (!isSupabaseConfigured()) {
+          const localUser = storageService?.getCurrentUser ? storageService.getCurrentUser() : null;
+          if (localUser) setUser(localUser);
+        }
       } finally {
         setLoading(false);
       }
@@ -131,9 +149,11 @@ export const AuthProvider = ({ children }) => {
     initAuth();
 
     const handleLocalAuthChange = () => {
-      const updated = storageService.getCurrentUser();
       if (!isSupabaseConfigured() || !session) {
-        setUser(updated);
+        const updated = storageService?.getCurrentUser ? storageService.getCurrentUser() : null;
+        if (!isSupabaseConfigured()) {
+          setUser(updated);
+        }
       }
     };
 
@@ -182,15 +202,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) {
-        // Fallback check to storageService demo credentials if not yet signed up in Supabase Auth
-        try {
-          const localRes = storageService.login(emailOrRoll, password);
-          if (localRes && localRes.user) {
-            setUser(localRes.user);
-            return localRes;
-          }
-        } catch (localErr) {}
-
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('Invalid email, roll number, or password.');
         } else if (error.message.includes('Email not confirmed')) {
@@ -199,33 +210,43 @@ export const AuthProvider = ({ children }) => {
         throw new Error(error.message);
       }
 
+      setSession(data.session);
+
       const profile = await fetchSupabaseProfile(data.user.id, data.user.email);
+      const meta = data.user.user_metadata || {};
       const appUser = profile ? {
         ...profile,
         id: profile.id || data.user.id,
         user_id: data.user.id,
         email: data.user.email,
-        fullName: profile.full_name || profile.fullName,
-        role: profile.role || 'student',
-        rollNumber: profile.roll_number || profile.rollNumber,
+        fullName: profile.full_name || profile.fullName || meta.full_name,
+        role: profile.role || meta.role || 'student',
+        rollNumber: profile.roll_number || profile.rollNumber || meta.roll_number,
         collegeEmail: profile.college_email || data.user.email
       } : {
         id: data.user.id,
         user_id: data.user.id,
         email: data.user.email,
         collegeEmail: data.user.email,
-        fullName: data.user.user_metadata?.full_name || data.user.email.split('@')[0],
-        role: 'student',
+        fullName: meta.full_name || data.user.email.split('@')[0],
+        rollNumber: meta.roll_number || '',
+        role: meta.role || 'student',
         status: 'active'
       };
 
       setUser(appUser);
-      storageService.setCurrentUser(appUser);
+      if (typeof storageService?.setCurrentUser === 'function') {
+        storageService.setCurrentUser(appUser);
+      }
       return { user: appUser, session: data.session };
     }
 
+    // Standalone fallback when Supabase is unconfigured
     const res = storageService.login(emailOrRoll, password);
     setUser(res.user);
+    if (typeof storageService?.setCurrentUser === 'function') {
+      storageService.setCurrentUser(res.user);
+    }
     return res;
   };
 
@@ -290,14 +311,13 @@ export const AuthProvider = ({ children }) => {
         };
 
         if (data.session) {
+          setSession(data.session);
           setUser(appUser);
-          storageService.setCurrentUser(appUser);
+          if (typeof storageService?.setCurrentUser === 'function') {
+            storageService.setCurrentUser(appUser);
+          }
         }
       }
-
-      try {
-        storageService.register(userData);
-      } catch (e) {}
 
       return {
         user: appUser || { email, fullName: userData.fullName, role: 'student' },
@@ -308,6 +328,9 @@ export const AuthProvider = ({ children }) => {
 
     const res = storageService.register(userData);
     setUser(res.user);
+    if (typeof storageService?.setCurrentUser === 'function') {
+      storageService.setCurrentUser(res.user);
+    }
     return res;
   };
 
@@ -319,7 +342,12 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.warn('[AuthContext] Sign out notice:', err.message);
     }
-    storageService.logout();
+    if (typeof storageService?.logout === 'function') {
+      storageService.logout();
+    }
+    if (typeof storageService?.setCurrentUser === 'function') {
+      storageService.setCurrentUser(null);
+    }
     setUser(null);
     setSession(null);
   };
@@ -370,8 +398,14 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    const updated = storageService.updateProfile(user.id, cleanUpdates);
+    const updated = typeof storageService?.updateProfile === 'function'
+      ? storageService.updateProfile(user.id, cleanUpdates)
+      : { ...user, ...cleanUpdates };
+
     setUser(updated);
+    if (typeof storageService?.setCurrentUser === 'function') {
+      storageService.setCurrentUser(updated);
+    }
     return updated;
   };
 
