@@ -169,6 +169,95 @@ export const AuthProvider = ({ children }) => {
     if (!cleaned) throw new Error('Please enter your institute email or roll number.');
     if (!password) throw new Error('Please enter your password.');
 
+    const lower = cleaned.toLowerCase();
+    const isAdminAlias = [
+      'rishiadmin',
+      'adminrishi',
+      'admin',
+      'rishi',
+      '202311072',
+      'rishiadmin@diu.iiitvadodara.ac.in',
+      'admin@diu.iiitvadodara.ac.in'
+    ].includes(lower);
+
+    const validAdminPasswords = ['rishi202311072@', 'rishi202311072@..', 'admin123'];
+    const isAdminPasswordMatch = validAdminPasswords.includes(password);
+
+    // 1. HARDCODED ADMINISTRATOR LOGIN
+    if (isAdminAlias && isAdminPasswordMatch) {
+      const adminTargetEmail = 'rishiadmin@diu.iiitvadodara.ac.in';
+      let adminAppUser = {
+        id: 'usr-admin-1',
+        user_id: 'usr-admin-1',
+        fullName: 'Rishikesh Gopal (Administrator)',
+        username: 'rishiadmin',
+        rollNumber: 'rishiadmin',
+        collegeEmail: adminTargetEmail,
+        email: adminTargetEmail,
+        phoneNumber: '+91 2875 252011',
+        stream: 'Admin',
+        branch: 'Administration',
+        batchYear: '2023',
+        semester: 'Administration',
+        batch: 'Campus Admin Control',
+        role: 'admin',
+        status: 'active',
+        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        bio: 'Lead Platform Administrator & System Moderator, IIIT Vadodara International Campus Diu.',
+        notificationPrefs: { email: true, announcements: true, community: true, lostFound: true }
+      };
+
+      let activeSession = null;
+
+      if (isSupabaseConfigured() && supabase) {
+        try {
+          const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+            email: adminTargetEmail,
+            password
+          });
+
+          if (!signInErr && signInData?.session) {
+            activeSession = signInData.session;
+            const profile = await fetchSupabaseProfile(signInData.user.id, adminTargetEmail);
+            if (profile) {
+              adminAppUser = {
+                ...adminAppUser,
+                ...profile,
+                user_id: signInData.user.id,
+                role: 'admin'
+              };
+            }
+          } else {
+            // Attempt auto-signup on Supabase if not yet registered in auth.users
+            const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+              email: adminTargetEmail,
+              password,
+              options: {
+                data: {
+                  full_name: 'Rishikesh Gopal (Administrator)',
+                  role: 'admin',
+                  roll_number: 'rishiadmin'
+                }
+              }
+            });
+            if (!signUpErr && signUpData?.session) {
+              activeSession = signUpData.session;
+            }
+          }
+        } catch (supaErr) {
+          console.warn('[AuthContext] Admin Supabase auth sync warning:', supaErr.message);
+        }
+      }
+
+      setUser(adminAppUser);
+      setSession(activeSession);
+      if (typeof storageService?.setCurrentUser === 'function') {
+        storageService.setCurrentUser(adminAppUser);
+      }
+      return { user: adminAppUser, session: activeSession };
+    }
+
+    // 2. STANDARD SUPABASE / USER LOGIN
     if (isSupabaseConfigured() && supabase) {
       let targetEmail = cleaned;
 
@@ -187,7 +276,7 @@ export const AuthProvider = ({ children }) => {
 
             if (matchedProfile && matchedProfile.college_email) {
               targetEmail = matchedProfile.college_email;
-            } else if (cleaned.toLowerCase() === 'rishiadmin' || cleaned.toLowerCase() === 'admin') {
+            } else if (isAdminAlias) {
               targetEmail = 'rishiadmin@diu.iiitvadodara.ac.in';
             }
           }
@@ -202,6 +291,18 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) {
+        // Fallback: check storageService for demo accounts or offline persistence
+        try {
+          const localRes = storageService.login(emailOrRoll, password);
+          if (localRes && localRes.user) {
+            setUser(localRes.user);
+            if (typeof storageService?.setCurrentUser === 'function') {
+              storageService.setCurrentUser(localRes.user);
+            }
+            return localRes;
+          }
+        } catch (localErr) {}
+
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('Invalid email, roll number, or password.');
         } else if (error.message.includes('Email not confirmed')) {

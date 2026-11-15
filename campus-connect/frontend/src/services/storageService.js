@@ -172,17 +172,26 @@ export const storageService = {
     let users = getFromStorage(STORAGE_KEYS.USERS, INITIAL_USERS);
     const cleanedIdentifier = (emailOrRoll || '').trim().toLowerCase();
 
-    // Check credentials: match email, rollNumber, username, or 'rishiadmin' / 'admin'
+    // Check credentials: match email, rollNumber, username, or admin aliases
+    const isAdminIdentifier = (id) => [
+      'rishiadmin',
+      'adminrishi',
+      'admin',
+      'rishi',
+      '202311072',
+      'rishiadmin@diu.iiitvadodara.ac.in',
+      'admin@diu.iiitvadodara.ac.in'
+    ].includes(id);
+
     let found = users.find(u => 
       (u.collegeEmail && u.collegeEmail.toLowerCase() === cleanedIdentifier) || 
       (u.rollNumber && u.rollNumber.toLowerCase() === cleanedIdentifier) ||
       (u.username && u.username.toLowerCase() === cleanedIdentifier) ||
-      (cleanedIdentifier === 'rishiadmin' && u.role === 'admin') ||
-      (cleanedIdentifier === 'admin' && u.role === 'admin')
+      (isAdminIdentifier(cleanedIdentifier) && u.role === 'admin')
     );
 
-    // If logging in as rishiadmin or admin, ensure the admin user exists
-    if (!found && (cleanedIdentifier === 'rishiadmin' || cleanedIdentifier === 'admin' || cleanedIdentifier === 'admin@diu.iiitvadodara.ac.in')) {
+    // If logging in with any admin alias, ensure the admin user exists
+    if (!found && isAdminIdentifier(cleanedIdentifier)) {
       found = {
         id: 'usr-admin-1',
         fullName: 'Rishikesh Gopal (Administrator)',
