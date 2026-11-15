@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Campus Connect Architecture Presentation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: #070A0E;
+    background-image: 
+      radial-gradient(circle at 15% 15%, rgba(183, 243, 74, 0.08) 0%, transparent 45%),
+      radial-gradient(circle at 85% 85%, rgba(255, 159, 67, 0.08) 0%, transparent 45%),
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 50px 50px, 50px 50px;
+    color: #FFFFFF;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 36px 48px;
+    width: 2400px;
+    height: 1350px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #1C2633;
+  }
+  .brand-group { display: flex; align-items: center; gap: 20px; }
+  .logo-box {
+    width: 72px; height: 72px; border-radius: 20px;
+    background: linear-gradient(135deg, #1C2812 0%, #0F1608 100%);
+    border: 3px solid #B7F34A;
+    display: flex; align-items: center; justify-content: center;
+    color: #B7F34A; font-weight: 900; font-size: 32px;
+    box-shadow: 0 0 30px rgba(183, 243, 74, 0.35);
+  }
+  .title-group h1 { font-size: 42px; font-weight: 900; letter-spacing: -0.5px; }
+  .title-group p { font-size: 20px; color: #94A3B8; margin-top: 4px; font-weight: 600; }
+  
+  .badges-group { display: flex; gap: 14px; }
+  .badge {
+    padding: 10px 20px; border-radius: 9999px; font-size: 15px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 10px;
+  }
+  .badge-lime { background: rgba(183, 243, 74, 0.15); color: #B7F34A; border: 2px solid rgba(183, 243, 74, 0.4); }
+  .badge-orange { background: rgba(255, 159, 67, 0.15); color: #FF9F43; border: 2px solid rgba(255, 159, 67, 0.4); }
+  .badge-blue { background: rgba(56, 189, 248, 0.15); color: #38BDF8; border: 2px solid rgba(56, 189, 248, 0.4); }
+
+  /* 4-Tier Main Layout Columns */
+  .tiers-container {
+    display: grid;
+    grid-template-columns: 1.15fr 0.95fr 1.05fr 0.85fr;
+    gap: 24px;
+    height: 1060px;
+    margin: 20px 0;
+  }
+
+  .tier-col {
+    background: #0E141B;
+    border: 2px solid #1E293B;
+    border-radius: 24px;
+    padding: 24px 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    position: relative;
+  }
+
+  .tier-col.highlight-col {
+    border-color: rgba(183, 243, 74, 0.5);
+    background: linear-gradient(180deg, #121A15 0%, #0D1318 100%);
+  }
+
+  .tier-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #1E293B;
+    margin-bottom: 18px;
+  }
+  .tier-num {
+    width: 44px; height: 44px; border-radius: 14px;
+    background: #18222E; color: #B7F34A; font-weight: 900; font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid rgba(183, 243, 74, 0.4);
+  }
+  .tier-title { font-size: 24px; font-weight: 900; color: #FFFFFF; }
+  .tier-subtitle { font-size: 14px; color: #94A3B8; font-weight: 700; margin-top: 2px; }
+
+  /* Cards inside Tiers */
+  .cards-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex-grow: 1;
+    justify-content: space-around;
+  }
+
+  .card-box {
+    background: #151D27;
+    border: 2px solid #233142;
+    border-radius: 18px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .card-box.lime-accent {
+    border-color: rgba(183, 243, 74, 0.4);
+    background: linear-gradient(145deg, #162415 0%, #121A18 100%);
+  }
+  .card-box.orange-accent {
+    border-color: rgba(255, 159, 67, 0.4);
+    background: linear-gradient(145deg, #241B12 0%, #1A1612 100%);
+  }
+  .card-box.blue-accent {
+    border-color: rgba(56, 189, 248, 0.4);
+    background: linear-gradient(145deg, #12212E 0%, #0E1720 100%);
+  }
+  .card-box.purple-accent {
+    border-color: rgba(168, 85, 247, 0.4);
+    background: linear-gradient(145deg, #22142E 0%, #170F20 100%);
+  }
+
+  .card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card-name { font-size: 19px; font-weight: 800; color: #FFFFFF; }
+  .card-badge {
+    font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 8px;
+    background: #0B0E14; border: 1px solid #222F3E; font-family: monospace;
+  }
+  .card-badge.lime { color: #B7F34A; border-color: rgba(183, 243, 74, 0.3); }
+  .card-badge.orange { color: #FF9F43; border-color: rgba(255, 159, 67, 0.3); }
+  .card-badge.blue { color: #38BDF8; border-color: rgba(56, 189, 248, 0.3); }
+  .card-badge.purple { color: #C084FC; border-color: rgba(168, 85, 247, 0.3); }
+
+  .card-bullets {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .card-bullets li {
+    font-size: 15px;
+    color: #E2E8F0;
+    line-height: 1.4;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-weight: 600;
+  }
+  .card-bullets li::before {
+    content: "•";
+    color: #B7F34A;
+    font-size: 20px;
+    line-height: 14px;
+  }
+  .orange-accent .card-bullets li::before { color: #FF9F43; }
+  .blue-accent .card-bullets li::before { color: #38BDF8; }
+  .purple-accent .card-bullets li::before { color: #C084FC; }
+
+  /* Footer */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 18px;
+    border-top: 2px solid #1C2633;
+    font-size: 18px;
+    color: #94A3B8;
+  }
+  .footer strong { color: #FFFFFF; }
+  .dev-name { color: #B7F34A; font-weight: 800; }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="brand-group">
+      <div class="logo-box">CC</div>
+      <div class="title-group">
+        <h1>CAMPUS CONNECT — SYSTEM ARCHITECTURE</h1>
+        <p>Integrated Digital Campus Platform • Indian Institute of Information Technology Vadodara (IIITV-ICD)</p>
+      </div>
+    </div>
+    <div class="badges-group">
+      <span class="badge badge-lime">Verified 42/42 QA Passed</span>
+      <span class="badge badge-orange">Dual-Engine Offline/Cloud</span>
+      <span class="badge badge-blue">Zero ERP Bloat / Student-Centric</span>
+    </div>
+  </div>
+
+  <!-- 4 MAIN ARCHITECTURAL TIERS -->
+  <div class="tiers-container">
+
+    <!-- TIER 1: CLIENT PRESENTATION TIER -->
+    <div class="tier-col highlight-col">
+      <div class="tier-header">
+        <div class="tier-num">1</div>
+        <div>
+          <div class="tier-title">Client Presentation Tier</div>
+          <div class="tier-subtitle">React 19 • Vite 6 • Tailwind CSS • Framer Motion</div>
+        </div>
+      </div>
+
+      <div class="cards-stack">
+        <!-- Card 1 -->
+        <div class="card-box lime-accent">
+          <div class="card-header-row">
+            <span class="card-name">Public Portal & Strict Auth Gate</span>
+            <span class="card-badge lime">/login & /register</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>Strict Domain Restriction:</strong> Only @diu.iiitvadodara.ac.in & @iiitvadodara.ac.in</li>
+            <li><strong>Stealth Admin Auth:</strong> Admin ID 'rishiadmin' without public UI clutter</li>
+            <li><strong>Stream & Branch Breakdown:</strong> B.Tech, M.Tech, MCA, PhD • CSE, AI, Cyber, ECE</li>
+          </ul>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="card-box lime-accent">
+          <div class="card-header-row">
+            <span class="card-name">8 Integrated Student Modules</span>
+            <span class="card-badge lime">/dashboard</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>[1] Timetables:</strong> Semesters 1–8, CSE/AI/Cyber/ECE, 110 routines</li>
+            <li><strong>[2] Notices:</strong> Targeted branch & semester circulars with alerts</li>
+            <li><strong>[3] Lost & Found:</strong> Genuine photos with direct WhatsApp/call</li>
+            <li><strong>[4] Diu Bus:</strong> ₹10 Municipal bus, ±10 min Kevdi rule, speed-dials</li>
+            <li><strong>[5] Resources:</strong> PYQs (2021–2026), Notes, Manuals (≤ 1 MB cap)</li>
+            <li><strong>[6] Community:</strong> Peer technical forum with verified badges</li>
+            <li><strong>[7] Explore Diu:</strong> 20 curated spots with GPS distances from Kevdi</li>
+            <li><strong>[8] Profile:</strong> Automated initials avatars (0 photo upload)</li>
+          </ul>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="card-box lime-accent">
+          <div class="card-header-row">
+            <span class="card-name">Website Controller & 100% Admin CMS</span>
+            <span class="card-badge lime">/about & /admin</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>Website Controller:</strong> Rishikesh Gopal (WhatsApp & email at top of /about)</li>
+            <li><strong>Developer Roster:</strong> Rishi, Sriya, Shivangi with roll nos & quotes</li>
+            <li><strong>100% Admin Editable:</strong> Controller details, hero, vision, benefits, photos</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 2: CLIENT ADAPTER & OFFLINE RESILIENCE -->
+    <div class="tier-col">
+      <div class="tier-header">
+        <div class="tier-num">2</div>
+        <div>
+          <div class="tier-title">Client Resilience Tier</div>
+          <div class="tier-subtitle">Offline-First Storage & Validation Services</div>
+        </div>
+      </div>
+
+      <div class="cards-stack">
+        <!-- Card 1 -->
+        <div class="card-box orange-accent">
+          <div class="card-header-row">
+            <span class="card-name">Master Storage Service</span>
+            <span class="card-badge orange">storageService.js</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>Unified Repository:</strong> CRUD for all 12 platform entities</li>
+            <li><strong>Local-First Engine:</strong> Versioned keys (cc_*_v2) in localStorage</li>
+            <li><strong>Reactive Event Bus:</strong> Dispatches 'campus_connect_update' events</li>
+            <li><strong>Zero Latency:</strong> Instant UI responses even without internet</li>
+          </ul>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="card-box orange-accent">
+          <div class="card-header-row">
+            <span class="card-name">Resource Gatekeeper (1 MB)</span>
+            <span class="card-badge orange">academicResourceService.js</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>Strict 1 MB Validation:</strong> Blocks oversized files on client & backend</li>
+            <li><strong>MIME Checking:</strong> PDF, JPG, JPEG, PNG formats verified</li>
+            <li><strong>Direct Tool Links:</strong> Returns iLovePDF & iLoveIMG on rejection</li>
+          </ul>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="card-box orange-accent">
+          <div class="card-header-row">
+            <span class="card-name">Context & Cloud Sync Adapter</span>
+            <span class="card-badge orange">supabaseSyncService.js</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>AuthContext:</strong> Session tokens, roles, and identity persistence</li>
+            <li><strong>NotificationContext:</strong> Real-time toast alerts across all actions</li>
+            <li><strong>Cloud Sync Adapter:</strong> Bi-directional sync to Supabase tables</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 3: BACKEND API & SUPABASE CLOUD DATABASE -->
+    <div class="tier-col">
+      <div class="tier-header">
+        <div class="tier-num">3</div>
+        <div>
+          <div class="tier-title">Cloud Database & APIs</div>
+          <div class="tier-subtitle">PostgreSQL 15 • Express REST • Supabase Storage</div>
+        </div>
+      </div>
+
+      <div class="cards-stack">
+        <!-- Card 1 -->
+        <div class="card-box blue-accent">
+          <div class="card-header-row">
+            <span class="card-name">12 PostgreSQL Tables</span>
+            <span class="card-badge blue">Supabase Cloud</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>profiles:</strong> Roll number, stream, branch, role, verification</li>
+            <li><strong>academic_routines:</strong> 110 routines across Semesters 1 to 8</li>
+            <li><strong>announcements:</strong> Circulars with branch & semester targeting</li>
+            <li><strong>academic_resources:</strong> PYQ archive with owner UID and path</li>
+            <li><strong>developers:</strong> Rishi (202311072), Sriya (202311060), Shivangi (202311079)</li>
+            <li><strong>about_content:</strong> 100% editable CMS for /about page</li>
+            <li><strong>lost_found, places, transport, services, community tables</strong></li>
+          </ul>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="card-box blue-accent">
+          <div class="card-header-row">
+            <span class="card-name">3 S3 Storage Buckets</span>
+            <span class="card-badge blue">Supabase S3</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>academic-resources:</strong> Strict 1 MB cap, PDF/images, organized</li>
+            <li><strong>lost-found-images:</strong> 2 MB cap, authentic campus lost photos</li>
+            <li><strong>campus-media:</strong> 5 MB cap, institutional photography & gallery</li>
+          </ul>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="card-box blue-accent">
+          <div class="card-header-row">
+            <span class="card-name">Security & Row Level Security (RLS)</span>
+            <span class="card-badge blue">PostgreSQL RLS</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>Owner RLS:</strong> Students can edit/delete only their own resources</li>
+            <li><strong>Public Read:</strong> Timetables, circulars, and study files publicly readable</li>
+            <li><strong>Admin Role Override:</strong> Full moderation across all 12 tables</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 4: EXTERNAL PROTOCOLS & INTEGRATIONS -->
+    <div class="tier-col">
+      <div class="tier-header">
+        <div class="tier-num">4</div>
+        <div>
+          <div class="tier-title">External Bridges</div>
+          <div class="tier-subtitle">Micro-Services & Protocol Integrations</div>
+        </div>
+      </div>
+
+      <div class="cards-stack">
+        <!-- Card 1 -->
+        <div class="card-box purple-accent">
+          <div class="card-header-row">
+            <span class="card-name">Online File Compression</span>
+            <span class="card-badge purple">Direct Bridges</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>iLovePDF Tool:</strong> 1-click link to compress PDF to ≤ 1 MB</li>
+            <li><strong>iLoveIMG Tool:</strong> 1-click link to compress images to ≤ 1 MB</li>
+            <li><strong>Seamless UX:</strong> In-modal helpers eliminate Google searching</li>
+          </ul>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="card-box purple-accent">
+          <div class="card-header-row">
+            <span class="card-name">WhatsApp Direct Chat</span>
+            <span class="card-badge purple">wa.me/91...</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>Website Controller:</strong> 1-click WhatsApp support (Rishi • 8340574363)</li>
+            <li><strong>Lost & Found:</strong> Direct peer chat to coordinate item return</li>
+            <li><strong>Privacy Preserving:</strong> Direct chat links without raw string clutter</li>
+          </ul>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="card-box purple-accent">
+          <div class="card-header-row">
+            <span class="card-name">Google Maps Geolocation</span>
+            <span class="card-badge purple">Maps Directions</span>
+          </div>
+          <ul class="card-bullets">
+            <li><strong>20 Diu Spots:</strong> Real coordinates from Kevdi Education Hub</li>
+            <li><strong>Distance Matrix:</strong> Auto-calculates driving & travel distances</li>
+            <li><strong>1-Click Navigation:</strong> Direct deep-links to turn-by-turn directions</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER: TEAM & CREDITS -->
+  <div class="footer">
+    <div>
+      Campus Connect Platform Architecture • Indian Institute of Information Technology Vadodara (IIITV-ICD)
+    </div>
+    <div>
+      Core Engineering Team: 
+      <span class="dev-name">Rishikesh Gopal (202311072)</span> • 
+      <span class="dev-name">Sriya Reddy (202311060)</span> • 
+      <span class="dev-name">Shivangi Goutam (202311079)</span> — 
+      <strong>B.Tech CSE (2023–2027)</strong>
+    </div>
+  </div>
+
+</body>
+</html>

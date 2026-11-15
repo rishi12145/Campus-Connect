@@ -1,0 +1,13 @@
+{
+  "name": "campus-connect-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix campus-connect/frontend run dev",
+    "build": "npm --prefix campus-connect/frontend run build",
+    "preview": "npm --prefix campus-connect/frontend run preview",
+    "start:backend": "npm --prefix campus-connect/backend run start",
+    "install:all": "npm --prefix campus-connect/frontend install && npm --prefix campus-connect/backend install"
+  }
+}
+
