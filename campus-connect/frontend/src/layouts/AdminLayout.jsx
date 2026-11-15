@@ -37,6 +37,8 @@ export const AdminLayout = () => {
     if (path === '/admin/resources') return { title: 'Study Resource Library', subtitle: 'Moderate user-uploaded study notes, question banks and materials' };
     if (path === '/admin/community') return { title: 'Community Forum Moderation', subtitle: 'Review discussion threads, manage reported topics and comments' };
     if (path === '/admin/explore') return { title: 'Explore Campus Directory', subtitle: 'Add and maintain verified campus landmarks and facilities' };
+    if (path === '/admin/developers') return { title: 'Developer Team Management', subtitle: 'Manage core developer portfolio, profiles, and contributions' };
+    if (path === '/admin/about') return { title: 'About Us & Website Controller', subtitle: 'Configure lead controller info, support channels, and institutional content' };
     if (path === '/admin/reports') return { title: 'Activity Logs & Analytics', subtitle: 'Audit trails, platform engagement statistics, and exportable reports' };
     return { title: 'Admin Console', subtitle: 'IIITV-ICD Central Management' };
   };

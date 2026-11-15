@@ -6,6 +6,7 @@ import { useNotification } from '../../context/NotificationContext';
 import {
   ShieldCheck,
   User,
+  Users,
   Mail,
   Phone,
   MessageCircle,
@@ -29,14 +30,14 @@ import { motion } from 'framer-motion';
 
 export const AdminAbout = () => {
   const { showToast } = useNotification();
-  const [content, setContent] = useState(storageService.getAboutContent());
+  const [content, setContent] = useState(() => storageService.getAboutContent() || INITIAL_ABOUT_CONTENT);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('controller'); // 'controller', 'hero', 'vision', 'gallery', 'benefits'
 
   // Sync state if external change happens
   useEffect(() => {
     const handleUpdate = () => {
-      setContent(storageService.getAboutContent());
+      setContent(storageService.getAboutContent() || INITIAL_ABOUT_CONTENT);
     };
     window.addEventListener('campus_connect_update', handleUpdate);
     return () => window.removeEventListener('campus_connect_update', handleUpdate);

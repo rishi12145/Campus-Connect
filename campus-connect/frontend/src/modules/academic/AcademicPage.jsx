@@ -52,6 +52,10 @@ export const AcademicPage = () => {
     { id: 'Semester 8', label: 'Semester 8', badge: '4th Year (Even)' }
   ];
 
+  const loadData = () => {
+    setRoutines(storageService.getRoutines());
+  };
+
   useEffect(() => {
     // Auto-select current day if weekday
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -60,9 +64,6 @@ export const AcademicPage = () => {
       setSelectedDay(today);
     }
 
-    const loadData = () => {
-      setRoutines(storageService.getRoutines());
-    };
     loadData();
 
     window.addEventListener('campus_connect_update', loadData);
@@ -374,9 +375,14 @@ export const AcademicPage = () => {
                 {daysOfWeek.map((day) => {
                   const dayClasses = routines.filter((r) => {
                     const matchesSem = selectedSemester === 'All' || r.semester === selectedSemester;
-                    const matchesBatch = selectedBatch === 'All' || r.batch === selectedBatch;
+                    const matchesBranch =
+                      selectedBranch === 'All' ||
+                      !r.branch ||
+                      r.branch === 'All' ||
+                      r.branch === 'Common' ||
+                      r.branch === selectedBranch;
                     const matchesDay = r.day.toLowerCase() === day.toLowerCase();
-                    return matchesSem && matchesBatch && matchesDay;
+                    return matchesSem && matchesBranch && matchesDay;
                   });
 
                   // Split into Morning and Afternoon based on startTime
