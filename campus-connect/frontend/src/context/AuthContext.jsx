@@ -120,6 +120,9 @@ export const AuthProvider = ({ children }) => {
             if (typeof storageService?.setCurrentUser === 'function') {
               storageService.setCurrentUser(mergedUser);
             }
+            if (typeof storageService?.syncFromSupabase === 'function') {
+              storageService.syncFromSupabase().catch(() => {});
+            }
           } else {
             // No active Supabase session
             setUser(null);
@@ -139,6 +142,9 @@ export const AuthProvider = ({ children }) => {
                 setUser(mergedUser);
                 if (typeof storageService?.setCurrentUser === 'function') {
                   storageService.setCurrentUser(mergedUser);
+                }
+                if (typeof storageService?.syncFromSupabase === 'function') {
+                  storageService.syncFromSupabase().catch(() => {});
                 }
               }
             } else if (event === 'SIGNED_OUT') {

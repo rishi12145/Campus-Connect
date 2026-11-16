@@ -33,10 +33,16 @@ export const NotificationsPage = () => {
   const categories = ['All', 'Academic', 'Examination', 'Events', 'General', 'Emergency'];
   const branches = ['All Branches', 'CSE', 'AI', 'Cyber Security', 'ECE'];
 
-  const loadData = () => {
+  const loadData = async () => {
     setAnnouncements(storageService.getAnnouncements());
     const storedReads = JSON.parse(localStorage.getItem('cc_read_announcements') || '[]');
     setReadIds(storedReads);
+    if (typeof storageService?.syncFromSupabase === 'function') {
+      try {
+        await storageService.syncFromSupabase();
+        setAnnouncements(storageService.getAnnouncements());
+      } catch (err) {}
+    }
   };
 
   useEffect(() => {

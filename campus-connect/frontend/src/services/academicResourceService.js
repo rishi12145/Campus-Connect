@@ -168,7 +168,7 @@ export const academicResourceService = {
 
         if (error) throw error;
         if (data && data.length > 0) {
-          return data.map((item) => ({
+          const mapped = data.map((item) => ({
             id: item.id,
             title: item.title,
             description: item.description || '',
@@ -192,6 +192,14 @@ export const academicResourceService = {
             createdAt: item.created_at,
             created_at: item.created_at
           }));
+
+          const local = storageService.getResources();
+          const map = new Map();
+          local.forEach(l => { if (l && l.id) map.set(l.id, l); });
+          mapped.forEach(m => { if (m && m.id) map.set(m.id, m); });
+          const merged = Array.from(map.values());
+          storageService.saveResources(merged);
+          return merged;
         }
       } catch (err) {
         console.warn('Supabase fetch failed, using local persistent store:', err.message);
@@ -290,6 +298,26 @@ export const academicResourceService = {
           .single();
 
         if (dbError) throw dbError;
+
+        // Keep local cache immediately synchronized
+        storageService.createResource({
+          id: dbData.id,
+          title: resourceRecord.title,
+          description: resourceRecord.description,
+          category: resourceRecord.category,
+          semester: resourceRecord.semester,
+          subject: resourceRecord.subject,
+          academic_year: resourceRecord.academic_year,
+          fileName: resourceRecord.file_name,
+          filePath: resourceRecord.file_path,
+          fileType: resourceRecord.file_type,
+          fileSize: resourceRecord.file_size,
+          fileBytes: resourceRecord.file_bytes,
+          uploaded_by: resourceRecord.uploaded_by,
+          uploader_name: resourceRecord.uploader_name,
+          uploader_role: resourceRecord.uploader_role,
+          download_count: 0
+        });
 
         if (onProgress) onProgress(100, 'Upload complete!');
         return {

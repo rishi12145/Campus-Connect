@@ -44,10 +44,19 @@ export const CommunityPage = () => {
     'Events'
   ];
 
-  const loadData = () => {
+  const loadData = async () => {
     setDiscussions(storageService.getDiscussions());
     if (activeDiscussion) {
       setComments(storageService.getComments(activeDiscussion.id));
+    }
+    if (typeof storageService?.syncFromSupabase === 'function') {
+      try {
+        await storageService.syncFromSupabase();
+        setDiscussions(storageService.getDiscussions());
+        if (activeDiscussion) {
+          setComments(storageService.getComments(activeDiscussion.id));
+        }
+      } catch (err) {}
     }
   };
 
@@ -65,11 +74,12 @@ export const CommunityPage = () => {
     }
 
     try {
+      const authorId = user?.user_id || user?.id || 'usr-student-1';
       storageService.createDiscussion({
         title: postTitle,
         content: postContent,
         category: postCategory,
-        authorId: user?.id || 'usr-student-1',
+        authorId,
         authorName: user?.fullName || 'Student',
         authorRoll: user?.rollNumber || '202351001',
         authorAvatar: user?.avatarUrl
@@ -117,9 +127,10 @@ export const CommunityPage = () => {
     e.preventDefault();
     if (!newCommentText.trim() || !activeDiscussion) return;
 
+    const authorId = user?.user_id || user?.id || 'usr-student-active';
     storageService.addComment({
       discussionId: activeDiscussion.id,
-      authorId: user?.id || 'usr-student-active',
+      authorId,
       authorName: user?.fullName || 'Student',
       authorRoll: user?.rollNumber || 'Verified Student',
       authorAvatar: user?.avatarUrl,

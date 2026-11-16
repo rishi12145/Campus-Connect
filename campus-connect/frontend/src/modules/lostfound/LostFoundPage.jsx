@@ -48,8 +48,14 @@ export const LostFoundPage = () => {
     imagePreview: ''
   });
 
-  const loadData = () => {
+  const loadData = async () => {
     setItems(storageService.getLostFound());
+    if (typeof storageService?.syncFromSupabase === 'function') {
+      try {
+        await storageService.syncFromSupabase();
+        setItems(storageService.getLostFound());
+      } catch (err) {}
+    }
   };
 
   useEffect(() => {
@@ -82,6 +88,7 @@ export const LostFoundPage = () => {
     }
 
     try {
+      const reportedById = user?.user_id || user?.id || 'usr-student-1';
       storageService.createLostFound({
         title: formData.title,
         description: formData.description,
@@ -89,11 +96,11 @@ export const LostFoundPage = () => {
         category: formData.category,
         location: formData.location,
         date: formData.date,
-        contactName: formData.contactName,
-        contactPhone: formData.contactPhone,
-        contactEmail: formData.contactEmail,
+        contactName: formData.contactName || user?.fullName || 'Student',
+        contactPhone: formData.contactPhone || user?.phoneNumber || '',
+        contactEmail: formData.contactEmail || user?.collegeEmail || user?.email || '',
         imageUrl: formData.imagePreview,
-        reportedBy: user?.id || 'usr-student-1'
+        reportedBy: reportedById
       });
 
       showToast(`Successfully reported ${formData.type === 'lost' ? 'lost' : 'found'} item!`, 'success');

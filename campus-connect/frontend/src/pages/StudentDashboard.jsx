@@ -126,6 +126,9 @@ export const StudentDashboard = () => {
 
   useEffect(() => {
     loadData();
+    if (typeof storageService?.syncFromSupabase === 'function') {
+      storageService.syncFromSupabase().catch(() => {});
+    }
     const handleUpdate = () => loadData();
     window.addEventListener('campus_connect_update', handleUpdate);
     return () => window.removeEventListener('campus_connect_update', handleUpdate);

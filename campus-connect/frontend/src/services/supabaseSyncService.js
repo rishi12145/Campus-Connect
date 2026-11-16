@@ -127,6 +127,34 @@ export const supabaseSyncService = {
       console.warn(`[Supabase Storage] Delete from ${bucketName} error:`, err.message);
       return false;
     }
+  },
+
+  /**
+   * Subscribes to live Postgres changes across shared campus tables
+   * Allows instant cross-device and cross-account updates without manual refresh
+   */
+  subscribeToChanges(onTableChange) {
+    if (!isSupabaseConfigured() || !supabase) return () => {};
+    try {
+      const channel = supabase
+        .channel('campus_connect_realtime_feed')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'lost_found_items' }, () => onTableChange?.('lost_found_items'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'academic_resources' }, () => onTableChange?.('academic_resources'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'discussions' }, () => onTableChange?.('discussions'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'discussion_comments' }, () => onTableChange?.('discussion_comments'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => onTableChange?.('announcements'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'academic_routines' }, () => onTableChange?.('academic_routines'))
+        .subscribe();
+
+      return () => {
+        try {
+          supabase.removeChannel(channel);
+        } catch (e) {}
+      };
+    } catch (err) {
+      console.warn('[Supabase Realtime] Subscription notice:', err.message);
+      return () => {};
+    }
   }
 };
 

@@ -52,8 +52,14 @@ export const AcademicPage = () => {
     { id: 'Semester 8', label: 'Semester 8', badge: '4th Year (Even)' }
   ];
 
-  const loadData = () => {
+  const loadData = async () => {
     setRoutines(storageService.getRoutines());
+    if (typeof storageService?.syncFromSupabase === 'function') {
+      try {
+        await storageService.syncFromSupabase();
+        setRoutines(storageService.getRoutines());
+      } catch (err) {}
+    }
   };
 
   useEffect(() => {

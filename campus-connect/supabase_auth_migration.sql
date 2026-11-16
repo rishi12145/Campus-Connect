@@ -281,8 +281,40 @@ ALTER TABLE public.local_services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.developers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.about_content ENABLE ROW LEVEL SECURITY;
 
--- Revoke dangerous direct permissions from anon
+-- -------------------------------------------------------------------------
+-- POSTGRESQL ROLE GRANTS
+-- Ensure PostgreSQL allows the anon and authenticated roles to access tables,
+-- allowing Row Level Security (RLS) to enforce row-by-row policies without
+-- hitting PostgreSQL 42501 permission denied errors.
+-- -------------------------------------------------------------------------
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+
+-- Grant table operations to authenticated users & service role
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated, service_role;
+
+-- Grant public SELECT on shared campus tables to anon (public viewing)
+GRANT SELECT ON public.academic_routines TO anon;
+GRANT SELECT ON public.announcements TO anon;
+GRANT SELECT ON public.lost_found_items TO anon;
+GRANT SELECT ON public.academic_resources TO anon;
+GRANT SELECT ON public.discussions TO anon;
+GRANT SELECT ON public.discussion_comments TO anon;
+GRANT SELECT ON public.transport_routes TO anon;
+GRANT SELECT ON public.places TO anon;
+GRANT SELECT ON public.local_services TO anon;
+GRANT SELECT ON public.developers TO anon;
+GRANT SELECT ON public.about_content TO anon;
+
+-- Protect private student profiles: anon CANNOT read profiles
 REVOKE ALL ON public.profiles FROM anon;
+
+-- Grant sequence permissions
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+
+-- Ensure future tables created also have proper grants
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated, service_role;
 
 -- -------------------------------------------------------------------------
 -- 1. PROFILES POLICIES
@@ -308,12 +340,13 @@ CREATE POLICY "profiles_update_own"
 
 -- -------------------------------------------------------------------------
 -- 2. ACADEMIC RESOURCES POLICIES
+-- Public & students can view/download resources.
 -- Strict authenticated ownership: students manage ONLY their own uploads.
 -- Admins can manage all resources.
 -- -------------------------------------------------------------------------
-CREATE POLICY "resources_select_authenticated"
+CREATE POLICY "resources_select_policy"
     ON public.academic_resources FOR SELECT
-    TO authenticated
+    TO authenticated, anon
     USING (true);
 
 CREATE POLICY "resources_insert_authenticated"
@@ -324,6 +357,8 @@ CREATE POLICY "resources_insert_authenticated"
         AND (
             uploaded_by = auth.uid()::text 
             OR uploaded_by = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+            OR uploaded_by = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+            OR uploaded_by = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
             OR public.is_admin()
         )
     );
@@ -334,6 +369,8 @@ CREATE POLICY "resources_update_owner_or_admin"
     USING (
         uploaded_by = auth.uid()::text 
         OR uploaded_by = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+        OR uploaded_by = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+        OR uploaded_by = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
         OR public.is_admin()
     )
     WITH CHECK (
@@ -341,6 +378,8 @@ CREATE POLICY "resources_update_owner_or_admin"
         AND (
             uploaded_by = auth.uid()::text 
             OR uploaded_by = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+            OR uploaded_by = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+            OR uploaded_by = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
             OR public.is_admin()
         )
     );
@@ -351,16 +390,18 @@ CREATE POLICY "resources_delete_owner_or_admin"
     USING (
         uploaded_by = auth.uid()::text 
         OR uploaded_by = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+        OR uploaded_by = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+        OR uploaded_by = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
         OR public.is_admin()
     );
 
 -- -------------------------------------------------------------------------
 -- 3. DISCUSSIONS & COMMENTS POLICIES
--- Students can create and manage their own threads. Admins can moderate all.
+-- Public & students can view discussions; students create & manage their own threads.
 -- -------------------------------------------------------------------------
 CREATE POLICY "discussions_select_policy"
     ON public.discussions FOR SELECT
-    TO authenticated
+    TO authenticated, anon
     USING (true);
 
 CREATE POLICY "discussions_insert_policy"
@@ -369,6 +410,8 @@ CREATE POLICY "discussions_insert_policy"
     WITH CHECK (
         author_id = auth.uid()::text 
         OR author_id = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+        OR author_id = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+        OR author_id = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
         OR public.is_admin()
     );
 
@@ -378,6 +421,8 @@ CREATE POLICY "discussions_update_policy"
     USING (
         author_id = auth.uid()::text 
         OR author_id = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+        OR author_id = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+        OR author_id = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
         OR public.is_admin()
     );
 
@@ -387,12 +432,14 @@ CREATE POLICY "discussions_delete_policy"
     USING (
         author_id = auth.uid()::text 
         OR author_id = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+        OR author_id = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+        OR author_id = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
         OR public.is_admin()
     );
 
 CREATE POLICY "comments_select_policy"
     ON public.discussion_comments FOR SELECT
-    TO authenticated
+    TO authenticated, anon
     USING (true);
 
 CREATE POLICY "comments_insert_policy"
@@ -401,6 +448,8 @@ CREATE POLICY "comments_insert_policy"
     WITH CHECK (
         author_id = auth.uid()::text 
         OR author_id = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+        OR author_id = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+        OR author_id = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
         OR public.is_admin()
     );
 
@@ -410,16 +459,18 @@ CREATE POLICY "comments_delete_policy"
     USING (
         author_id = auth.uid()::text 
         OR author_id = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+        OR author_id = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+        OR author_id = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
         OR public.is_admin()
     );
 
 -- -------------------------------------------------------------------------
 -- 4. LOST & FOUND POLICIES
--- Reporters manage only their listings; admins can moderate all.
+-- Viewable by everyone; reporters manage only their listings; admins moderate all.
 -- -------------------------------------------------------------------------
 CREATE POLICY "lost_found_select_policy"
     ON public.lost_found_items FOR SELECT
-    TO authenticated
+    TO authenticated, anon
     USING (true);
 
 CREATE POLICY "lost_found_insert_policy"
@@ -428,6 +479,8 @@ CREATE POLICY "lost_found_insert_policy"
     WITH CHECK (
         reported_by = auth.uid()::text 
         OR reported_by = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+        OR reported_by = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+        OR reported_by = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
         OR public.is_admin()
     );
 
@@ -437,6 +490,8 @@ CREATE POLICY "lost_found_update_policy"
     USING (
         reported_by = auth.uid()::text 
         OR reported_by = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+        OR reported_by = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+        OR reported_by = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
         OR public.is_admin()
     );
 
@@ -446,6 +501,8 @@ CREATE POLICY "lost_found_delete_policy"
     USING (
         reported_by = auth.uid()::text 
         OR reported_by = (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+        OR reported_by = (SELECT college_email FROM public.profiles WHERE user_id = auth.uid())
+        OR reported_by = (SELECT roll_number FROM public.profiles WHERE user_id = auth.uid())
         OR public.is_admin()
     );
 

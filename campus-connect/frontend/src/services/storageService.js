@@ -161,6 +161,18 @@ export const initStorage = () => {
         console.warn('[Supabase Sync Notice]:', err.message);
       });
     }, 150);
+
+    // Setup live realtime updates across accounts & devices
+    supabaseSyncService.subscribeToChanges((table) => {
+      storageService.syncFromSupabase().catch(() => {});
+    });
+
+    // Auto-refresh when user returns to this browser tab
+    if (typeof window.addEventListener === 'function') {
+      window.addEventListener('focus', () => {
+        storageService.syncFromSupabase().catch(() => {});
+      });
+    }
   }
 };
 
@@ -670,6 +682,10 @@ export const storageService = {
     return getFromStorage(STORAGE_KEYS.RESOURCES, INITIAL_RESOURCES);
   },
 
+  saveResources(resourcesList) {
+    saveToStorage(STORAGE_KEYS.RESOURCES, resourcesList);
+  },
+
   createResource(data) {
     const resources = this.getResources();
     const newRes = {
@@ -701,6 +717,26 @@ export const storageService = {
     resources.unshift(newRes);
     saveToStorage(STORAGE_KEYS.RESOURCES, resources);
 
+    // Sync to Supabase academic_resources table
+    supabaseSyncService.upsert('academic_resources', {
+      id: newRes.id,
+      title: newRes.title,
+      description: newRes.description,
+      category: newRes.category,
+      semester: newRes.semester,
+      subject: newRes.subject,
+      academic_year: newRes.academic_year,
+      file_name: newRes.fileName,
+      file_path: newRes.filePath,
+      file_type: newRes.fileType,
+      file_size: newRes.fileSize,
+      file_bytes: newRes.fileBytes,
+      uploaded_by: newRes.uploaded_by,
+      uploader_name: newRes.uploader_name,
+      uploader_role: newRes.uploader_role,
+      download_count: newRes.download_count
+    });
+
     this.addActivityLog('Resource Uploaded', newRes.uploaderName, 'student', newRes.title, 'Resources');
     return newRes;
   },
@@ -711,6 +747,26 @@ export const storageService = {
     if (index === -1) throw new Error('Resource not found.');
     resources[index] = { ...resources[index], ...updates };
     saveToStorage(STORAGE_KEYS.RESOURCES, resources);
+
+    const r = resources[index];
+    supabaseSyncService.upsert('academic_resources', {
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      category: r.category,
+      semester: r.semester,
+      subject: r.subject,
+      academic_year: r.academic_year || r.examYear,
+      file_name: r.fileName || r.file_name,
+      file_path: r.filePath || r.file_path,
+      file_type: r.fileType || r.file_type,
+      file_size: r.fileSize || r.file_size,
+      file_bytes: r.fileBytes || r.file_bytes,
+      uploaded_by: r.uploaded_by || r.uploadedBy,
+      uploader_name: r.uploader_name || r.uploaderName,
+      uploader_role: r.uploader_role || 'student',
+      download_count: r.downloadCount || r.download_count || 0
+    });
     return resources[index];
   },
 
@@ -720,6 +776,10 @@ export const storageService = {
     if (res) {
       res.downloadCount = (res.downloadCount || 0) + 1;
       saveToStorage(STORAGE_KEYS.RESOURCES, resources);
+      supabaseSyncService.upsert('academic_resources', {
+        id: res.id,
+        download_count: res.downloadCount
+      });
     }
     return res;
   },
@@ -728,6 +788,7 @@ export const storageService = {
     let resources = this.getResources();
     resources = resources.filter(r => r.id !== id);
     saveToStorage(STORAGE_KEYS.RESOURCES, resources);
+    supabaseSyncService.remove('academic_resources', id);
     return true;
   },
 
@@ -739,20 +800,32 @@ export const storageService = {
   createDiscussion(data) {
     const discussions = this.getDiscussions();
     const newDisc = {
-      id: `disc-${Date.now()}`,
+      id: data.id || `disc-${Date.now()}`,
       title: data.title,
       content: data.content,
       category: data.category || 'General Questions',
-      authorId: data.authorId || 'usr-student-1',
-      authorName: data.authorName || 'Student',
-      authorRoll: data.authorRoll || '202351001',
+      authorId: data.authorId || data.author_id || 'usr-student-1',
+      authorName: data.authorName || data.author_name || 'Student',
+      authorRoll: data.authorRoll || data.author_roll || '202351001',
       authorAvatar: data.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      likes: [],
+      likes: data.likes || [],
       commentsCount: 0,
-      createdAt: new Date().toISOString()
+      createdAt: data.createdAt || new Date().toISOString()
     };
     discussions.unshift(newDisc);
     saveToStorage(STORAGE_KEYS.DISCUSSIONS, discussions);
+
+    // Sync to Supabase discussions table
+    supabaseSyncService.upsert('discussions', {
+      id: newDisc.id,
+      title: newDisc.title,
+      content: newDisc.content,
+      category: newDisc.category,
+      author_id: newDisc.authorId,
+      author_name: newDisc.authorName,
+      author_roll: newDisc.authorRoll,
+      upvotes: newDisc.likes.length || 0
+    });
 
     this.addActivityLog('Discussion Started', newDisc.authorName, 'student', newDisc.title, 'Community');
     return newDisc;
@@ -770,6 +843,12 @@ export const storageService = {
       disc.likes.push(userId);
     }
     saveToStorage(STORAGE_KEYS.DISCUSSIONS, discussions);
+
+    supabaseSyncService.upsert('discussions', {
+      id: disc.id,
+      upvotes: disc.likes.length
+    });
+
     return { likesCount: disc.likes.length, isLiked: !alreadyLiked };
   },
 
@@ -777,6 +856,8 @@ export const storageService = {
     let discussions = this.getDiscussions();
     discussions = discussions.filter(d => d.id !== id);
     saveToStorage(STORAGE_KEYS.DISCUSSIONS, discussions);
+    supabaseSyncService.remove('discussions', id);
+
     // Also delete child comments
     let comments = getFromStorage(STORAGE_KEYS.COMMENTS, INITIAL_COMMENTS);
     comments = comments.filter(c => c.discussionId !== id);
@@ -793,17 +874,27 @@ export const storageService = {
   addComment(data) {
     const comments = getFromStorage(STORAGE_KEYS.COMMENTS, INITIAL_COMMENTS);
     const newComment = {
-      id: `com-${Date.now()}`,
-      discussionId: data.discussionId,
-      authorId: data.authorId || 'usr-student-1',
-      authorName: data.authorName || 'Student',
-      authorRoll: data.authorRoll || '202351001',
+      id: data.id || `com-${Date.now()}`,
+      discussionId: data.discussionId || data.discussion_id,
+      authorId: data.authorId || data.author_id || 'usr-student-1',
+      authorName: data.authorName || data.author_name || 'Student',
+      authorRoll: data.authorRoll || data.author_roll || '202351001',
       authorAvatar: data.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       content: data.content,
-      createdAt: new Date().toISOString()
+      createdAt: data.createdAt || new Date().toISOString()
     };
     comments.push(newComment);
     saveToStorage(STORAGE_KEYS.COMMENTS, comments);
+
+    // Sync comment to Supabase discussion_comments table
+    supabaseSyncService.upsert('discussion_comments', {
+      id: newComment.id,
+      discussion_id: newComment.discussionId,
+      content: newComment.content,
+      author_id: newComment.authorId,
+      author_name: newComment.authorName,
+      author_roll: newComment.authorRoll
+    });
 
     // Update parent discussion comments count
     const discussions = this.getDiscussions();
@@ -821,6 +912,7 @@ export const storageService = {
     if (target) {
       comments = comments.filter(c => c.id !== commentId);
       saveToStorage(STORAGE_KEYS.COMMENTS, comments);
+      supabaseSyncService.remove('discussion_comments', commentId);
 
       const discussions = this.getDiscussions();
       const disc = discussions.find(d => d.id === target.discussionId);
@@ -1044,6 +1136,14 @@ export const storageService = {
   async syncFromSupabase() {
     if (!supabaseSyncService.isConfigured()) return false;
 
+    // Helper to merge remote items into local items by ID so offline items and seed data are preserved
+    const mergeById = (remoteItems, localItems) => {
+      const map = new Map();
+      (localItems || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
+      (remoteItems || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
+      return Array.from(map.values());
+    };
+
     try {
       // 1. Fetch routines
       const remoteRoutines = await supabaseSyncService.fetchAll('academic_routines', 'created_at', true);
@@ -1064,7 +1164,8 @@ export const storageService = {
           batchYear: r.batch_year,
           batch: r.batch
         }));
-        saveToStorage(STORAGE_KEYS.ROUTINES, mapped);
+        const currentRoutines = this.getRoutines();
+        saveToStorage(STORAGE_KEYS.ROUTINES, mergeById(mapped, currentRoutines));
       }
 
       // 2. Fetch announcements
@@ -1082,7 +1183,8 @@ export const storageService = {
           publishedAt: a.published_at,
           authorName: a.author_name
         }));
-        saveToStorage(STORAGE_KEYS.ANNOUNCEMENTS, mapped);
+        const currentAnn = this.getAnnouncements();
+        saveToStorage(STORAGE_KEYS.ANNOUNCEMENTS, mergeById(mapped, currentAnn));
       }
 
       // 3. Fetch lost & found
@@ -1104,7 +1206,8 @@ export const storageService = {
           reportedBy: l.reported_by,
           createdAt: l.created_at
         }));
-        saveToStorage(STORAGE_KEYS.LOST_FOUND, mapped);
+        const currentLost = this.getLostFound();
+        saveToStorage(STORAGE_KEYS.LOST_FOUND, mergeById(mapped, currentLost));
       }
 
       // 4. Fetch developers
@@ -1124,7 +1227,8 @@ export const storageService = {
           bio: d.bio,
           avatar: d.avatar
         }));
-        saveToStorage(STORAGE_KEYS.DEVELOPERS, mapped);
+        const currentDevs = this.getDevelopers();
+        saveToStorage(STORAGE_KEYS.DEVELOPERS, mergeById(mapped, currentDevs));
       }
 
       // 5. Fetch discussions & comments
@@ -1139,9 +1243,11 @@ export const storageService = {
           authorName: d.author_name,
           authorRoll: d.author_roll,
           upvotes: d.upvotes,
+          likes: [],
           createdAt: d.created_at
         }));
-        saveToStorage(STORAGE_KEYS.DISCUSSIONS, mapped);
+        const currentDisc = this.getDiscussions();
+        saveToStorage(STORAGE_KEYS.DISCUSSIONS, mergeById(mapped, currentDisc));
       }
 
       const remoteComments = await supabaseSyncService.fetchAll('discussion_comments', 'created_at', true);
@@ -1155,7 +1261,39 @@ export const storageService = {
           authorRoll: c.author_roll,
           createdAt: c.created_at
         }));
-        saveToStorage(STORAGE_KEYS.COMMENTS, mapped);
+        const currentComments = getFromStorage(STORAGE_KEYS.COMMENTS, INITIAL_COMMENTS);
+        saveToStorage(STORAGE_KEYS.COMMENTS, mergeById(mapped, currentComments));
+      }
+
+      // 6. Fetch academic resources (PYQs, Notes, Manuals, Materials)
+      const remoteResources = await supabaseSyncService.fetchAll('academic_resources', 'created_at', false);
+      if (remoteResources && remoteResources.length > 0) {
+        const mapped = remoteResources.map(r => ({
+          id: r.id,
+          title: r.title,
+          description: r.description || '',
+          category: r.category,
+          semester: r.semester,
+          subject: r.subject,
+          academic_year: r.academic_year,
+          examYear: r.academic_year,
+          fileName: r.file_name,
+          filePath: r.file_path,
+          fileType: r.file_type,
+          fileSize: r.file_size,
+          fileBytes: r.file_bytes,
+          uploaded_by: r.uploaded_by,
+          uploadedBy: r.uploaded_by,
+          uploader_name: r.uploader_name,
+          uploaderName: r.uploader_name,
+          uploader_role: r.uploader_role || 'student',
+          download_count: r.download_count || 0,
+          downloadCount: r.download_count || 0,
+          createdAt: r.created_at,
+          created_at: r.created_at
+        }));
+        const currentResources = this.getResources();
+        saveToStorage(STORAGE_KEYS.RESOURCES, mergeById(mapped, currentResources));
       }
 
       return true;
@@ -1320,6 +1458,61 @@ export const storageService = {
         avatar_url: u.avatarUrl,
         bio: u.bio,
         notification_prefs: u.notificationPrefs
+      });
+      total++;
+    }
+
+    // 8. Academic Resources
+    const resources = this.getResources();
+    if (onProgress) onProgress(`Syncing ${resources.length} study resources...`, 99);
+    for (const res of resources) {
+      await supabaseSyncService.upsert('academic_resources', {
+        id: res.id,
+        title: res.title,
+        description: res.description,
+        category: res.category,
+        semester: res.semester,
+        subject: res.subject,
+        academic_year: res.academic_year || res.examYear || '2025',
+        file_name: res.fileName || res.file_name,
+        file_path: res.filePath || res.file_path,
+        file_type: res.fileType || res.file_type || 'application/pdf',
+        file_size: res.fileSize || res.file_size || '500 KB',
+        file_bytes: res.fileBytes || res.file_bytes || 512000,
+        uploaded_by: res.uploaded_by || res.uploadedBy,
+        uploader_name: res.uploader_name || res.uploaderName,
+        uploader_role: res.uploader_role || 'student',
+        download_count: res.download_count || res.downloadCount || 0
+      });
+      total++;
+    }
+
+    // 9. Discussions
+    const discussions = this.getDiscussions();
+    for (const d of discussions) {
+      await supabaseSyncService.upsert('discussions', {
+        id: d.id,
+        title: d.title,
+        content: d.content,
+        category: d.category,
+        author_id: d.authorId || d.author_id,
+        author_name: d.authorName || d.author_name,
+        author_roll: d.authorRoll || d.author_roll,
+        upvotes: d.upvotes || 0
+      });
+      total++;
+    }
+
+    // 10. Comments
+    const comments = getFromStorage(STORAGE_KEYS.COMMENTS, INITIAL_COMMENTS);
+    for (const c of comments) {
+      await supabaseSyncService.upsert('discussion_comments', {
+        id: c.id,
+        discussion_id: c.discussionId || c.discussion_id,
+        content: c.content,
+        author_id: c.authorId || c.author_id,
+        author_name: c.authorName || c.author_name,
+        author_roll: c.authorRoll || c.author_roll
       });
       total++;
     }
